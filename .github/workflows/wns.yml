@@ -1,0 +1,50 @@
+name: Windows VPS via RDP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Start Building...
+    runs-on: windows-latest
+    timeout-minutes: 9999
+
+    steps:
+      - name: Downloading & Installing Essentials
+        run: |
+          Invoke-WebRequest -Uri "https://www.dropbox.com/scl/fi/qdyd4p9t6xoabl95n5o3g/Downloads.bat?rlkey=snr74vv1vr8k5suujugvrhjtm&dl=1" -OutFile "Downloads.bat"
+          cmd /c Downloads.bat
+
+      - name: Set up RDP on Windows
+        run: |
+          # Enable RDP
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+
+          # Allow RDP through firewall
+          Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
+
+          # Allow all inbound traffic (use with caution)
+          New-NetFirewallRule -DisplayName "Allow All Inbound" -Direction Inbound -Action Allow
+
+          # Set up a user with a password
+          net user opie iq3ihY97. /add
+          net user opie /active:yes
+          net localgroup administrators opie /add
+
+          # Restart RDP service with Force flag
+          Restart-Service -Name TermService -Force
+
+      - name: Log In To AnyDesk
+        run: cmd /c show.bat
+
+      - name: Time Counter
+        run: python time.py
+
+      - name: Get Public IP
+        run: |
+          $ip = (Invoke-WebRequest -Uri "http://ifconfig.me/ip").Content
+          Write-Output "Public IP: $ip"
+
+      - name: Keep the workflow alive
+        run: |
+          Start-Sleep -Seconds 9999 # Keep alive for max duration
